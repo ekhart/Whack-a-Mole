@@ -14,6 +14,8 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import java.util.Random;
+
 /**
  * Created by Ekh on 2015-06-14.
  */
@@ -36,6 +38,12 @@ public class WhackAMoleView
 
     private final int MOLE_LENGTH = 7;
     private Point[] moles = new Point[MOLE_LENGTH];
+
+    private int activeMole = 0,
+        moleRate = 5;
+    private boolean moleRising = true,
+        moleSinking = false,
+        moleJustHit = false;
 
     public WhackAMoleView(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
@@ -124,6 +132,7 @@ public class WhackAMoleView
                             mask = getScaled(getResource(R.drawable.mask));
                             mole = getScaled(getResource(R.drawable.mole));
                             onTitle = false;
+                            pickActiveMole();
                         }
                         break;
                 }
@@ -146,6 +155,41 @@ public class WhackAMoleView
         public void setRunning(boolean value) {
             running = value;
         }
+
+        private void animateMoles() {
+            for (int i = 0; i < MOLE_LENGTH; ++i)
+                setMoleIfActive(i, getMoleY(i), getIfEven(i, 300, 250));
+        }
+    }
+
+    private int getIfEven(int i, int a, int b) {
+        return isEven(i) ? a : b;
+    }
+
+    private void setMoleIfActive(int i, int activeHeight, int sinkingHeigth) {
+        if (activeMole == i + 1) {
+            int y = moles[i].y;
+            if (moleRising) {
+                moles[i].y -= moleRate;
+            } else if (moleSinking) {
+                moles[i].y += moleRate;
+            }
+
+            if (y >= getDrawScaleHeigth(activeHeight) || moleJustHit) {
+                moles[i].y = getDrawScaleHeigth(activeHeight);
+                pickActiveMole();
+            }
+
+            if (y <= getDrawScaleHeigth(sinkingHeigth)) {
+                moles[i].y = getDrawScaleHeigth(sinkingHeigth);
+                moleRising = false;
+                moleSinking = true;
+            }
+        }
+    }
+
+    private int getDrawScaleHeigth(int i) {
+        return (int) (i * drawScale.height);
     }
 
     private Point[] initMoles() {
@@ -156,10 +200,13 @@ public class WhackAMoleView
             point.x = (int) (x * drawScale.width);
             x += 100;
 
-            int y = isEven(i) ? 475 : 425;
-            point.y = (int) (y * drawScale.height);
+            point.y = (int) (getMoleY(i) * drawScale.height);
         }
         return new Point[0];
+    }
+
+    private int getMoleY(int i) {
+        return isEven(i) ? 475 : 425;
     }
 
     private boolean isEven(int i) {
@@ -189,6 +236,12 @@ public class WhackAMoleView
 
     private Bitmap getResource(int id) {
         return BitmapFactory.decodeResource(myContext.getResources(), id);
+    }
+
+    private void pickActiveMole() {
+        activeMole = new Random().nextInt(MOLE_LENGTH) + 1;
+        moleRising = true;
+        moleSinking = false;
     }
 
     @Override
