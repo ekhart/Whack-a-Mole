@@ -29,10 +29,12 @@ public class WhackAMoleView
     private WhackAMoleThread thread;
 
     public WhackAMoleView(Context context, AttributeSet attributeSet) {
-        super(context);
+        super(context, attributeSet);
 
-        mySurfaceHolder.addCallback(this);
-        thread = new WhackAMoleThread(getHolder(), context, new Handler() {
+        SurfaceHolder holder = getHolder();
+        holder.addCallback(this);
+
+        thread = new WhackAMoleThread(holder, context, new Handler() {
             @Override
             public void handleMessage(Message msg) {
 

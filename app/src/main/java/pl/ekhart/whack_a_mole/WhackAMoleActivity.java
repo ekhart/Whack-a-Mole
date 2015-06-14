@@ -1,38 +1,51 @@
 package pl.ekhart.whack_a_mole;
 
-import android.support.v7.app.ActionBarActivity;
+import android.app.Activity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Toast;
 
 
-public class WhackAMoleActivity extends ActionBarActivity {
+public class WhackAMoleActivity extends Activity {
+
+    private static final int TOGGLE_SOUND = 1;
+    private boolean soundEnabled = true;
+    private WhackAMoleView view;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_whack_amole);
+        setFullscreen();
+        setContentView(R.layout.whackamole_layout);
+        view = (WhackAMoleView) findViewById(R.id.mole);
+        view.setKeepScreenOn(true);
+    }
+
+    private void setFullscreen() {
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        int fullscreen = WindowManager.LayoutParams.FLAG_FULLSCREEN;
+        getWindow().setFlags(fullscreen, fullscreen);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_whack_amole, menu);
+        MenuItem toggleSound = menu.add(0, TOGGLE_SOUND, 0, "Toggle Sound");
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        switch (item.getItemId()) {
+            case TOGGLE_SOUND:
+                soundEnabled = !soundEnabled;
+                String text = "Sound " + (soundEnabled ? "On" : "Off");
+                Toast.makeText(this, text, Toast.LENGTH_SHORT)
+                    .show();
+                break;
         }
-
-        return super.onOptionsItemSelected(item);
+        return false;
     }
 }
