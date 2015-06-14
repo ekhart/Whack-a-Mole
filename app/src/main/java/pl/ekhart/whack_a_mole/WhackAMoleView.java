@@ -4,16 +4,18 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Point;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
 import android.util.AttributeSet;
-import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import java.nio.channels.Pipe;
 import java.util.Random;
 
 /**
@@ -44,6 +46,15 @@ public class WhackAMoleView
     private boolean moleRising = true,
         moleSinking = false,
         moleJustHit = false;
+
+    private Bitmap whack;
+    private boolean whacking = false;
+    private int molesWhacked = 0,
+        molesMissed;
+
+    private Point finger;
+
+    private Paint blackPaint;
 
     public WhackAMoleView(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
@@ -80,6 +91,7 @@ public class WhackAMoleView
                 try {
                     canvas = mySurfaceHolder.lockCanvas(null);
                     synchronized (mySurfaceHolder) {
+                        animateMoles();
                         draw(canvas);
                     }
                 } finally {
@@ -92,10 +104,29 @@ public class WhackAMoleView
         private void draw(Canvas canvas) {
             try {
                 canvas.drawBitmap(background, 0, 0, null);
+                drawText(canvas);
                 drawMoles(canvas);
                 drawMask(canvas);
+                drawWhack(canvas);
             } catch (Exception e) {
 
+            }
+        }
+
+        private void drawText(Canvas canvas) {
+            canvas.drawText("Whacked: " + molesWhacked, 10,
+                blackPaint.getTextSize() + 10, blackPaint);
+            canvas.drawText("Missed: " + molesMissed,
+                screenWidth - (int) (200 * drawScale.width),
+                blackPaint.getTextSize() + 10, blackPaint);
+        }
+
+        private void drawWhack(Canvas canvas) {
+            if (whacking) {
+                canvas.drawBitmap(whack,
+                    finger.x - (whack.getWidth() / 2),
+                    finger.y - (whack.getHeight() / 2),
+                    null);
             }
         }
 
@@ -120,6 +151,12 @@ public class WhackAMoleView
 
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
+                        finger.x = x;
+                        finger.y = y;
+                        if (!onTitle && detectMoleContact()) {
+                            whacking = true;
+                            molesWhacked++;
+                        }
                         break;
 
                     case MotionEvent.ACTION_MOVE:
@@ -131,9 +168,11 @@ public class WhackAMoleView
                             scale = getScale();
                             mask = getScaled(getResource(R.drawable.mask));
                             mole = getScaled(getResource(R.drawable.mole));
+                            whack = getScaled(getResource(R.drawable.whack));
                             onTitle = false;
                             pickActiveMole();
                         }
+                        whacking = false;
                         break;
                 }
             }
@@ -149,6 +188,7 @@ public class WhackAMoleView
                         (float) screenWidth / 800,
                         (float) screenHeight / 600);
                 moles = initMoles();
+                blackPaint = getPaint();
             }
         }
 
@@ -160,6 +200,16 @@ public class WhackAMoleView
             for (int i = 0; i < MOLE_LENGTH; ++i)
                 setMoleIfActive(i, getMoleY(i), getIfEven(i, 300, 250));
         }
+    }
+
+    private Paint getPaint() {
+        Paint paint = new Paint();
+        paint.setAntiAlias(true);
+        paint.setColor(Color.BLACK);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setTextAlign(Paint.Align.LEFT);
+        paint.setTextSize(drawScale.width * 30);
+        return paint;
     }
 
     private int getIfEven(int i, int a, int b) {
@@ -239,9 +289,32 @@ public class WhackAMoleView
     }
 
     private void pickActiveMole() {
+        if (!moleJustHit && activeMole > 0) {
+            molesMissed++;
+        }
         activeMole = new Random().nextInt(MOLE_LENGTH) + 1;
         moleRising = true;
         moleSinking = false;
+        moleRate = 5 + molesWhacked / 10;
+    }
+
+    private boolean detectMoleContact() {
+        boolean contact = false;
+        for (int i = 0; i < MOLE_LENGTH; ++i) {
+            moleJustHit = contact = activeMoleClicked(i);
+        }
+        return contact;
+    }
+
+    private boolean activeMoleClicked(int i) {
+        Point mole = moles[i];
+        int x = mole.x + (int) (88 * drawScale.width),
+            y = (int) (getIfEven(i, 450, 400) * drawScale.height);
+        return activeMole == i + 1
+            && finger.x >= mole.x
+            && finger.x < x
+            && finger.y > mole.y
+            && finger.y < y;
     }
 
     @Override
