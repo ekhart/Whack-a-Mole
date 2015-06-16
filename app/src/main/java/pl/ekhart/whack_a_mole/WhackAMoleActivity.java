@@ -1,6 +1,7 @@
 package pl.ekhart.whack_a_mole;
 
 import android.app.Activity;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -22,6 +23,7 @@ public class WhackAMoleActivity extends Activity {
         setContentView(R.layout.whackamole_layout);
         view = (WhackAMoleView) findViewById(R.id.mole);
         view.setKeepScreenOn(true);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
 
     private void setFullscreen() {
@@ -40,7 +42,7 @@ public class WhackAMoleActivity extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case TOGGLE_SOUND:
-                soundEnabled = !soundEnabled;
+                view.soundOn = soundEnabled = !soundEnabled;
                 String text = "Sound " + (soundEnabled ? "On" : "Off");
                 Toast.makeText(this, text, Toast.LENGTH_SHORT)
                     .show();

@@ -7,8 +7,11 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
+import android.media.AudioManager;
+import android.media.SoundPool;
 import android.os.Handler;
 import android.os.Message;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -34,7 +37,7 @@ public class WhackAMoleView
         onTitle = true;
     private WhackAMoleThread thread;
 
-    private WidthHeigth<Integer> backgroundOrig;
+    private WidthHeigthInt backgroundOrig;
     private WidthHeigth<Float> scale, drawScale;
     private Bitmap mask, mole;
 
@@ -55,6 +58,10 @@ public class WhackAMoleView
     private Point finger;
 
     private Paint blackPaint;
+
+    private static SoundPool sounds;
+    private static int whackSound, missSound;
+    public boolean soundOn = true;
 
     public WhackAMoleView(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
@@ -82,6 +89,10 @@ public class WhackAMoleView
             mySurfaceHolder = holder;
             myContext = context;
             background = getWhackAMoleBackground();
+            backgroundOrig = new WidthHeigthInt(background);
+            sounds = new SoundPool(5, AudioManager.STREAM_MUSIC, 0);
+            whackSound = sounds.load(myContext, R.raw.whack, 1);
+            missSound = sounds.load(myContext, R.raw.miss, 1);
         }
 
         @Override
@@ -155,6 +166,8 @@ public class WhackAMoleView
                         finger.y = y;
                         if (!onTitle && detectMoleContact()) {
                             whacking = true;
+                            if (soundOn)
+                                playSound(whackSound);
                             molesWhacked++;
                         }
                         break;
@@ -200,6 +213,12 @@ public class WhackAMoleView
             for (int i = 0; i < MOLE_LENGTH; ++i)
                 setMoleIfActive(i, getMoleY(i), getIfEven(i, 300, 250));
         }
+    }
+
+    private void playSound(int soundId) {
+        AudioManager manager = (AudioManager) myContext.getSystemService(Context.AUDIO_SERVICE);
+        float volume = (float) manager.getStreamVolume(AudioManager.STREAM_MUSIC);
+        sounds.play(soundId, volume, volume, 1, 0, 1);
     }
 
     private Paint getPaint() {
@@ -290,11 +309,13 @@ public class WhackAMoleView
 
     private void pickActiveMole() {
         if (!moleJustHit && activeMole > 0) {
+            if (soundOn)
+                playSound(missSound);
             molesMissed++;
         }
         activeMole = new Random().nextInt(MOLE_LENGTH) + 1;
         moleRising = true;
-        moleSinking = false;
+        moleSinking = moleJustHit = false;
         moleRate = 5 + molesWhacked / 10;
     }
 
