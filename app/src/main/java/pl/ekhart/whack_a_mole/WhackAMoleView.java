@@ -63,6 +63,9 @@ public class WhackAMoleView
     private static int whackSound, missSound;
     public boolean soundOn = true;
 
+    private boolean gameOver = false;
+    private Bitmap gameOverDialog;
+
     public WhackAMoleView(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
 
@@ -102,8 +105,10 @@ public class WhackAMoleView
                 try {
                     canvas = mySurfaceHolder.lockCanvas(null);
                     synchronized (mySurfaceHolder) {
-                        animateMoles();
-                        draw(canvas);
+                        if (!gameOver) {
+                            animateMoles();
+                            draw(canvas);
+                        }
                     }
                 } finally {
                     if (canvas != null)
@@ -119,9 +124,22 @@ public class WhackAMoleView
                 drawMoles(canvas);
                 drawMask(canvas);
                 drawWhack(canvas);
+                if (gameOver) {
+                    drawGameOverDialog(canvas);
+                }
             } catch (Exception e) {
 
             }
+        }
+
+        private void drawGameOverDialog(Canvas canvas) {
+            int left = half(screenWidth) - half(gameOverDialog.getWidth()),
+                top = half(screenHeight) - half(gameOverDialog.getHeight());
+            canvas.drawBitmap(gameOverDialog, left, top, null);
+        }
+
+        private int half(int n) {
+            return n / 2;
         }
 
         private void drawText(Canvas canvas) {
@@ -162,13 +180,14 @@ public class WhackAMoleView
 
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        finger.x = x;
-                        finger.y = y;
-                        if (!onTitle && detectMoleContact()) {
-                            whacking = true;
-                            if (soundOn)
-                                playSound(whackSound);
-                            molesWhacked++;
+                        if (!gameOver) {
+                            finger = new Point(x, y);
+                            if (!onTitle && detectMoleContact()) {
+                                whacking = true;
+                                if (soundOn)
+                                    playSound(whackSound);
+                                molesWhacked++;
+                            }
                         }
                         break;
 
@@ -177,26 +196,38 @@ public class WhackAMoleView
 
                     case MotionEvent.ACTION_UP:
                         if (onTitle) {
-                            background = getScaledBitmap(getWhackAMoleBackground());
+                            background = getScaledToScreen(getWhackAMoleBackground());
                             scale = getScale();
-                            mask = getScaled(getResource(R.drawable.mask));
-                            mole = getScaled(getResource(R.drawable.mole));
-                            whack = getScaled(getResource(R.drawable.whack));
+                            mask = getScaledBitmap(R.drawable.mask);
+                            mole = getScaledBitmap(R.drawable.mole);
+                            whack = getScaledBitmap(R.drawable.whack);
+                            gameOverDialog = getScaledBitmap(R.drawable.gameover);
                             onTitle = false;
                             pickActiveMole();
                         }
                         whacking = false;
+                        if (gameOver) {
+                            molesWhacked =
+                            molesMissed =
+                            activeMole = 0;
+                            pickActiveMole();
+                            gameOver = false;
+                        }
                         break;
                 }
             }
             return true;
         }
 
+        private Bitmap getScaledBitmap(int drawableId) {
+            return getScaled(getResource(drawableId));
+        }
+
         public void setSurfaceSize(int width, int heigth) {
             synchronized (mySurfaceHolder) {
                 screenWidth = width;
                 screenHeight = heigth;
-                background = getScaledBitmap(background);
+                background = getScaledToScreen(background);
                 drawScale = new WidthHeigth<>(
                         (float) screenWidth / 800,
                         (float) screenHeight / 600);
@@ -266,12 +297,24 @@ public class WhackAMoleView
         for (int i = 0; i < moles.length; i++) {
             Point point = moles[i];
 
-            point.x = (int) (x * drawScale.width);
-            x += 100;
+            if (point == null) {
+                moles[i] = new Point(getPointX(x), getPointY(i));
+            } else {
+                point.x = getPointX(x);
+                point.y = getPointY(i);
+            }
 
-            point.y = (int) (getMoleY(i) * drawScale.height);
+            x += 100;
         }
         return new Point[0];
+    }
+
+    private int getPointX(int x) {
+        return (int) (x * drawScale.width);
+    }
+
+    private int getPointY(int i) {
+        return (int) (getMoleY(i) * drawScale.height);
     }
 
     private int getMoleY(int i) {
@@ -289,7 +332,7 @@ public class WhackAMoleView
         );
     }
 
-    private Bitmap getScaledBitmap(Bitmap bitmap) {
+    private Bitmap getScaledToScreen(Bitmap bitmap) {
         return Bitmap.createScaledBitmap(bitmap, screenWidth, screenHeight, true);
     }
 
@@ -312,6 +355,8 @@ public class WhackAMoleView
             if (soundOn)
                 playSound(missSound);
             molesMissed++;
+            if (molesMissed >= 5)
+                gameOver = true;
         }
         activeMole = new Random().nextInt(MOLE_LENGTH) + 1;
         moleRising = true;
