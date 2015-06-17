@@ -2,6 +2,7 @@ package pl.ekhart.whack_a_mole;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.view.Menu;
@@ -22,6 +23,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.StringReader;
+import java.sql.SQLException;
 
 
 public class WhackAMoleActivity extends Activity {
@@ -43,12 +45,36 @@ public class WhackAMoleActivity extends Activity {
         view.setKeepScreenOn(true);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
+        //1
         //view.soundOn = soundEnabled = getSoundSetting();
+        //2
+//        try {
+//            readXML();
+//        } catch (XmlPullParserException | IOException e) {
+//            e.printStackTrace();
+//        }
+        //3
+        DatabaseAdapter db = new DatabaseAdapter(this);
         try {
-            readXML();
-        } catch (XmlPullParserException | IOException e) {
+            db.open();
+        } catch (SQLException e) {
             e.printStackTrace();
         }
+
+        Cursor cursor = null;
+        try {
+            cursor = db.getRecord(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        startManagingCursor(cursor);
+        if (cursor.moveToFirst()) {
+            do {
+                soundEnabled = Boolean.parseBoolean(cursor.getString(1));
+            } while (cursor.moveToNext());
+        }
+        db.close();
+
         view.soundOn = soundEnabled;
     }
 
@@ -70,8 +96,19 @@ public class WhackAMoleActivity extends Activity {
             case TOGGLE_SOUND:
                 view.soundOn = soundEnabled = !soundEnabled;
 
+                //1
                 //setSoundSetting(soundEnabled);
-                writeXML(soundEnabled);
+                //2
+                //writeXML(soundEnabled);
+                //3
+                DatabaseAdapter db = new DatabaseAdapter(this);
+                try {
+                    db.open();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+                db.insertOrUpdateRecord(Boolean.toString(soundEnabled));
+                db.close();
 
                 String text = "Sound " + (soundEnabled ? "On" : "Off");
                 Toast.makeText(this, text, Toast.LENGTH_SHORT)
