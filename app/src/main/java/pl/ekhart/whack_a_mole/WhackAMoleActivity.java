@@ -10,11 +10,25 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.StringReader;
+
 
 public class WhackAMoleActivity extends Activity {
 
     private static final int TOGGLE_SOUND = 1;
     public static final String SOUND_SETTING = "soundSetting";
+    public static final String SETTINGS_XML = "settings.xml";
     private boolean soundEnabled = true;
     private WhackAMoleView view;
 
@@ -28,7 +42,14 @@ public class WhackAMoleActivity extends Activity {
         view = (WhackAMoleView) findViewById(R.id.mole);
         view.setKeepScreenOn(true);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
-        view.soundOn = soundEnabled = getSoundSetting();
+
+        //view.soundOn = soundEnabled = getSoundSetting();
+        try {
+            readXML();
+        } catch (XmlPullParserException | IOException e) {
+            e.printStackTrace();
+        }
+        view.soundOn = soundEnabled;
     }
 
     private void setFullscreen() {
@@ -48,7 +69,10 @@ public class WhackAMoleActivity extends Activity {
         switch (item.getItemId()) {
             case TOGGLE_SOUND:
                 view.soundOn = soundEnabled = !soundEnabled;
-                setSoundSetting(soundEnabled);
+
+                //setSoundSetting(soundEnabled);
+                writeXML(soundEnabled);
+
                 String text = "Sound " + (soundEnabled ? "On" : "Off");
                 Toast.makeText(this, text, Toast.LENGTH_SHORT)
                     .show();
@@ -67,5 +91,58 @@ public class WhackAMoleActivity extends Activity {
     public boolean getSoundSetting() {
         SharedPreferences preferences = getSharedPreferences(PREFERANCES_NAME, 0);
         return preferences.getBoolean(SOUND_SETTING, true);
+    }
+
+    public void writeXML(boolean soundEnabled) {
+        try {
+            FileOutputStream out = openFileOutput(SETTINGS_XML, MODE_WORLD_WRITEABLE);
+            OutputStreamWriter writer = new OutputStreamWriter(out);
+            writer.write("<sound_setting>" + this.soundEnabled + "<sound_setting>\n");
+            writer.flush();
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void readXML()
+        throws XmlPullParserException, IOException {
+
+        String tag = "";
+        XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+        factory.setNamespaceAware(true);
+        XmlPullParser parser = factory.newPullParser();
+
+        try {
+            InputStream in = openFileInput(SETTINGS_XML);
+            InputStreamReader inputReader = new InputStreamReader(in);
+            BufferedReader reader = new BufferedReader(inputReader);
+            String line;
+            StringBuffer buffer = new StringBuffer();
+            while ((line = reader.readLine()) != null) {
+                buffer.append(line);
+            }
+            in.close();
+
+            parser.setInput(new StringReader(buffer.toString()));
+            for (int eventType = parser.getEventType();
+                eventType != XmlPullParser.END_DOCUMENT;
+                eventType = parser.next()) {
+
+                if (eventType == XmlPullParser.START_DOCUMENT) {
+
+                } else if (eventType == XmlPullParser.START_TAG) {
+                    tag = parser.getName();
+                } else if (eventType == XmlPullParser.END_TAG) {
+
+                } else if (eventType == XmlPullParser.TEXT) {
+                    if (tag.contains("sound_setting")) {
+                        soundEnabled = Boolean.parseBoolean(parser.getText());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("File not found");
+        }
     }
 }
