@@ -294,7 +294,7 @@ public class WhackAMoleView
 
     private Point[] initMoles() {
         int x = 55;
-        for (int i = 0; i < moles.length; i++) {
+        for (int i = 0; i < MOLE_LENGTH; i++) {
             Point point = moles[i];
 
             if (point == null) {
@@ -306,7 +306,7 @@ public class WhackAMoleView
 
             x += 100;
         }
-        return new Point[0];
+        return moles;
     }
 
     private int getPointX(int x) {
